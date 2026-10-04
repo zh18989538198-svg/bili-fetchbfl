@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#00aeec" />
+  <title>B站 UP 主播放量监测</title>
+
+  <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f5f7fa;
+      --card:#fff;
+      --text:#17191c;
+      --muted:#737980;
+      --line:#e8ebef;
+      --primary:#00aeec;
+      --primary-dark:#008fc4;
+      --green:#18a566;
+      --radius:18px;
+      --shadow:0 8px 30px rgba(31,35,41,.06);
+    }
+
+    *{box-sizing:border-box}
+    html{-webkit-tap-highlight-color:transparent}
+    body{
+      margin:0;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 10% 0%,rgba(0,174,236,.10),transparent 28%),
+        var(--bg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    }
+
+    button,input{font:inherit}
+
+    .wrap{
+      width:min(1180px,calc(100% - 28px));
+      margin:auto;
+      padding:30px 0 60px;
+    }
+
+    .hero{margin:4px 0 24px}
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 12px;
+      border-radius:999px;
+      color:var(--primary-dark);
+      background:rgba(0,174,236,.10);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    h1{
+      font-size:clamp(30px,5vw,48px);
+      line-height:1.12;
+      margin:14px 0 10px;
+      letter-spacing:-1px;
+    }
+
+    .desc{
+      max-width:780px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.8;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(0,0,0,.04);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
+      margin-bottom:18px;
+    }
+
+    .title{
+      font-size:18px;
+      font-weight:800;
+      margin:0 0 16px;
+    }
+
+    .search{
+      display:flex;
+      gap:12px;
+    }
+
+    input{
+      flex:1;
+      min-width:0;
+      height:50px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:0 15px;
+      outline:none;
+      background:#fff;
+    }
+
+    input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 4px rgba(0,174,236,.09);
+    }
+
+    .btn{
+      height:50px;
+      border:0;
+      border-radius:12px;
+      padding:0 22px;
+      color:#fff;
+      background:var(--primary);
+      font-weight:800;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    .btn:hover{background:var(--primary-dark)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+
+    .help{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.7;
+    }
+
+    .status{
+      display:none;
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:10px;
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .status.show{display:block}
+    .status.loading{background:#eef9fd;color:#176a8c}
+    .status.ok{background:#edf9f3;color:#137b49}
+    .status.err{background:#fff0f0;color:#b63b3b}
+
+    .dashboard{display:none}
+    .dashboard.show{display:block}
+
+    .kpis{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .kpi{
+      background:#fff;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px;
+      border:1px solid rgba(0,0,0,.04);
+    }
+
+    .kpi-label{
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:9px;
+    }
+
+    .kpi-value{
+      font-size:28px;
+      font-weight:850;
+      letter-spacing:-.5px;
+    }
+
+    .kpi-value.blue{color:var(--primary-dark)}
+    .kpi-value.green{color:var(--green)}
+
+    .kpi-sub{
+      font-size:12px;
+      color:#a0a4a8;
+      margin-top:7px;
+    }
+
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:18px;
+    }
+
+    .chip{
+      padding:7px 10px;
+      border-radius:999px;
+      background:#fff;
+      border:1px solid var(--line);
+      color:#596068;
+      font-size:12px;
+    }
+
+    .chart{
+      width:100%;
+      height:430px;
+    }
+
+    .chart.small{height:350px}
+
+    .history-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .clear{
+      border:0;
+      border-radius:9px;
+      background:#f1f3f5;
+      color:#555;
+      padding:8px 12px;
+      cursor:pointer;
+    }
+
+    .history-list{
+      display:flex;
+      flex-direction:column;
+      gap:9px;
+      margin-top:14px;
+    }
+
+    .history-item{
+      display:grid;
+      grid-template-columns:1.4fr 1fr 1fr 1fr;
+      gap:12px;
+      padding:13px 14px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      font-size:13px;
+    }
+
+    .small-label{
+      display:block;
+      color:#a2a6aa;
+      font-size:11px;
+      margin-bottom:4px;
+    }
+
+    .empty{
+      padding:18px 0 4px;
+      color:#9aa0a6;
+      font-size:13px;
+    }
+
+    .footer{
+      color:#92979c;
+      font-size:12px;
+      line-height:1.7;
+      text-align:center;
+      margin-top:24px;
+    }
+
+    code{
+      background:rgba(0,0,0,.05);
+      padding:1px 5px;
+      border-radius:5px;
+    }
+
+    @media(max-width:850px){
+      .kpis{grid-template-columns:repeat(2,1fr)}
+    }
+
+    @media(max-width:600px){
+      .wrap{
+        width:calc(100% - 20px);
+        padding-top:18px;
+      }
+
+      .card{
+        padding:17px;
+        border-radius:15px;
+      }
+
+      .search{flex-direction:column}
+      .btn{width:100%}
+      .kpis{gap:10px}
+      .kpi{padding:16px;border-radius:14px}
+      .kpi-value{font-size:22px}
+      .chart{height:390px}
+      .history-item{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="tag">● Bilibili Monitor · Vercel API</div>
+      <h1>B站 UP 主播放量监测</h1>
+      <div class="desc">
+        前端只请求本站 <code>/api/bili</code>，由 Vercel Function 在服务端访问 B站。
+        历史快照仅保存在当前浏览器 localStorage，用于计算下一次抓取的播放增量。
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="title">查询 UP 主</div>
+
+      <div class="search">
+        <input id="spaceInput" autocomplete="off" placeholder="粘贴空间链接或直接输入 UID，例如 123456" />
+        <button id="fetchBtn" class="btn">开始抓取</button>
+      </div>
+
+      <div class="help">
+        第一次抓取会建立本机基准；再次抓取同一 UID 时自动计算增量。
+        默认最多读取 1000 条投稿，避免单次请求过多触发限流。
+      </div>
+
+      <div id="status" class="status"></div>
+    </section>
+
+    <section id="dashboard" class="dashboard">
+      <div id="meta" class="meta"></div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpi-label">当前总播放量</div>
+          <div id="totalPlay" class="kpi-value blue">-</div>
+          <div class="kpi-sub">本次读取投稿合计</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">视频数量</div>
+          <div id="videoCount" class="kpi-value">-</div>
+          <div class="kpi-sub">本次成功读取数量</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">平均播放量</div>
+          <div id="avgPlay" class="kpi-value">-</div>
+          <div class="kpi-sub">总播放 ÷ 视频数量</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">本次新增播放</div>
+          <div id="increment" class="kpi-value green">-</div>
+          <div id="incrementTip" class="kpi-sub">与上一次抓取比较</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">视频播放量 TOP 15</div>
+        <div id="playChart" class="chart"></div>
+      </div>
+
+      <div class="card">
+        <div class="title">播放增量 TOP 15</div>
+        <div id="incChart" class="chart"></div>
+      </div>
+
+      <div class="card">
+        <div class="title">历史总播放趋势</div>
+        <div id="trendChart" class="chart small"></div>
+      </div>
+
+      <div class="card">
+        <div class="history-head">
+          <div class="title" style="margin:0">本地抓取记录</div>
+          <button id="clearBtn" class="clear">清除当前 UID 记录</button>
+        </div>
+
+        <div id="historyBox"></div>
+      </div>
+    </section>
+
+    <div class="footer">
+      本工具只读取公开投稿统计信息；B站接口及风控规则可能调整。若出现临时限流，请稍后再试，不建议高频刷新。
+    </div>
+  </main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const input = $("spaceInput");
+const btn = $("fetchBtn");
+const statusBox = $("status");
+const dashboard = $("dashboard");
+
+let playChart;
+let incChart;
+let trendChart;
+
+const LAST_INPUT = "bili_monitor_last_input_v2";
+
+function parseUid(v){
+  v = String(v || "").trim();
+
+  if (/^\d+$/.test(v)) {
+    return v;
+  }
+
+  const m = v.match(/space\.bilibili\.com\/(\d+)/);
+
+  return m ? m[1] : null;
+}
+
+function fmt(n){
+  if (n === null || n === undefined) return "-";
+
+  n = Number(n) || 0;
+
+  if (n >= 1e8) return (n / 1e8).toFixed(2) + "亿";
+  if (n >= 1e4) return (n / 1e4).toFixed(1) + "万";
+
+  return n.toLocaleString("zh-CN");
+}
+
+function status(msg, type="loading"){
+  statusBox.className = "status show " + type;
+  statusBox.innerHTML = msg;
+}
+
+function storageKey(uid){
+  return "bili_monitor_v2_" + uid;
+}
+
+function getHistory(uid){
+  try{
+    return JSON.parse(localStorage.getItem(storageKey(uid))) || [];
+  }catch{
+    return [];
+  }
+}
+
+function saveHistory(uid, snap){
+  let arr = getHistory(uid);
+
+  arr.push(snap);
+
+  if (arr.length > 30){
+    arr = arr.slice(-30);
+  }
+
+  localStorage.setItem(
+    storageKey(uid),
+    JSON.stringify(arr)
+  );
+}
+
+function calcInc(current, previous){
+  if (!previous){
+    return {
+      total:null,
+      list:[]
+    };
+  }
+
+  const old = new Map(
+    previous.videos.map(v => [
+      v.bvid,
+      Number(v.play) || 0
+    ])
+  );
+
+  const list = current.map(v => ({
+    ...v,
+    increment:old.has(v.bvid)
+      ? Math.max(0, v.play - old.get(v.bvid))
+      : 0
+  }));
+
+  return {
+    total:list.reduce((s,v)=>s+v.increment,0),
+    list
+  };
+}
+
+async function loadData(uid){
+  const res = await fetch(
+    "/api/bili?uid=" + encodeURIComponent(uid),
+    {
+      headers:{
+        "Accept":"application/json"
+      }
+    }
+  );
+
+  const body = await res.json().catch(() => null);
+
+  if (!res.ok || !body?.ok){
+    throw new Error(
+      body?.error ||
+      ("API 请求失败 HTTP " + res.status)
+    );
+  }
+
+  return body;
+}
+
+function escapeHtml(s){
+  return String(s).replace(
+    /[&<>"']/g,
+    c => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    })[c]
+  );
+}
+
+function render(uid, apiData, current, previous){
+  dashboard.classList.add("show");
+
+  const videos = current.videos;
+
+  const total = videos.reduce(
+    (s,v)=>s+v.play,
+    0
+  );
+
+  const avg = videos.length
+    ? Math.round(total/videos.length)
+    : 0;
+
+  const inc = calcInc(
+    videos,
+    previous
+  );
+
+  $("totalPlay").textContent = fmt(total);
+
+  $("videoCount").textContent =
+    videos.length.toLocaleString("zh-CN");
+
+  $("avgPlay").textContent =
+    fmt(avg);
+
+  if (inc.total === null){
+    $("increment").textContent = "暂无";
+    $("incrementTip").textContent = "首次抓取，已建立基准";
+  }else{
+    $("increment").textContent =
+      "+" + fmt(inc.total);
+
+    $("incrementTip").textContent =
+      "相较上一次抓取";
+  }
+
+  const chips = [
+    "UID " + uid,
+    "接口 " + (apiData.source || "unknown"),
+    "读取 " + videos.length + " 条",
+    apiData.truncated
+      ? "已达到读取上限"
+      : "已读取可用投稿"
+  ];
+
+  $("meta").innerHTML =
+    chips
+      .map(x => `<span class="chip">${escapeHtml(x)}</span>`)
+      .join("");
+
+  renderPlay(videos);
+  renderInc(inc.list, previous);
+  renderTrend(uid);
+  renderHistory(uid);
+}
+
+function renderPlay(videos){
+  const data = [...videos]
+    .sort((a,b)=>b.play-a.play)
+    .slice(0,15)
+    .reverse();
+
+  if (!playChart){
+    playChart = echarts.init(
+      $("playChart")
+    );
+  }
+
+  playChart.setOption({
+    grid:{
+      left:10,
+      right:25,
+      top:15,
+      bottom:10,
+      containLabel:true
+    },
+
+    tooltip:{
+      trigger:"axis",
+      axisPointer:{
+        type:"shadow"
+      },
+      formatter:p =>
+        `${escapeHtml(data[p[0].dataIndex].title)}<br>播放量：${Number(p[0].value).toLocaleString()}`
+    },
+
+    xAxis:{
+      type:"value",
+      splitLine:{
+        lineStyle:{
+          color:"#f0f2f4"
+        }
+      }
+    },
+
+    yAxis:{
+      type:"category",
+      data:data.map(v =>
+        v.title.length > 16
+          ? v.title.slice(0,16) + "…"
+          : v.title
+      ),
+      axisTick:{
+        show:false
+      }
+    },
+
+    series:[
+      {
+        type:"bar",
+        data:data.map(v=>v.play),
+        barMaxWidth:20,
+        itemStyle:{
+          color:"#00aeec",
+          borderRadius:[0,6,6,0]
+        }
+      }
+    ]
+  }, true);
+}
+
+function renderInc(list, previous){
+  if (!incChart){
+    incChart = echarts.init(
+      $("incChart")
+    );
+  }
+
+  incChart.clear();
+
+  if (!previous){
+    incChart.setOption({
+      graphic:{
+        type:"text",
+        left:"center",
+        top:"middle",
+        style:{
+          text:"首次抓取暂无增量数据\n再次抓取后即可比较",
+          textAlign:"center",
+          fill:"#999",
+          fontSize:14,
+          lineHeight:24
+        }
+      }
+    });
+
+    return;
+  }
+
+  const data = [...list]
+    .filter(v=>v.increment>0)
+    .sort((a,b)=>b.increment-a.increment)
+    .slice(0,15)
+    .reverse();
+
+  if (!data.length){
+    incChart.setOption({
+      graphic:{
+        type:"text",
+        left:"center",
+        top:"middle",
+        style:{
+          text:"当前没有识别到播放增量",
+          fill:"#999",
+          fontSize:14
+        }
+      }
+    });
+
+    return;
+  }
+
+  incChart.setOption({
+    grid:{
+      left:10,
+      right:25,
+      top:15,
+      bottom:10,
+      containLabel:true
+    },
+
+    tooltip:{
+      trigger:"axis",
+      axisPointer:{
+        type:"shadow"
+      },
+      formatter:p =>
+        `${escapeHtml(data[p[0].dataIndex].title)}<br>新增：+${Number(p[0].value).toLocaleString()}`
+    },
+
+    xAxis:{
+      type:"value",
+      splitLine:{
+        lineStyle:{
+          color:"#f0f2f4"
+        }
+      }
+    },
+
+    yAxis:{
+      type:"category",
+      data:data.map(v =>
+        v.title.length > 16
+          ? v.title.slice(0,16) + "…"
+          : v.title
+      ),
+      axisTick:{
+        show:false
+      }
+    },
+
+    series:[
+      {
+        type:"bar",
+        data:data.map(v=>v.increment),
+        barMaxWidth:20,
+        itemStyle:{
+          color:"#18a566",
+          borderRadius:[0,6,6,0]
+        }
+      }
+    ]
+  }, true);
+}
+
+function renderTrend(uid){
+  const h = getHistory(uid);
+
+  if (!trendChart){
+    trendChart = echarts.init(
+      $("trendChart")
+    );
+  }
+
+  const dates = h.map(x => {
+    const d = new Date(x.time);
+
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  });
+
+  const totals = h.map(x =>
+    x.videos.reduce(
+      (s,v)=>s+(Number(v.play)||0),
+      0
+    )
+  );
+
+  trendChart.setOption({
+    tooltip:{
+      trigger:"axis"
+    },
+
+    grid:{
+      left:15,
+      right:22,
+      top:20,
+      bottom:10,
+      containLabel:true
+    },
+
+    xAxis:{
+      type:"category",
+      data:dates,
+      boundaryGap:false,
+      axisLabel:{
+        color:"#888"
+      }
+    },
+
+    yAxis:{
+      type:"value",
+      axisLabel:{
+        formatter:v=>fmt(v)
+      },
+      splitLine:{
+        lineStyle:{
+          color:"#f0f2f4"
+        }
+      }
+    },
+
+    series:[
+      {
+        type:"line",
+        data:totals,
+        smooth:true,
+        symbolSize:6,
+        lineStyle:{
+          width:3
+        },
+        areaStyle:{
+          opacity:.08
+        },
+        itemStyle:{
+          color:"#00aeec"
+        }
+      }
+    ]
+  }, true);
+}
+
+function renderHistory(uid){
+  const h = getHistory(uid)
+    .slice()
+    .reverse();
+
+  if (!h.length){
+    $("historyBox").innerHTML =
+      '<div class="empty">暂无历史记录</div>';
+
+    return;
+  }
+
+  $("historyBox").innerHTML =
+    '<div class="history-list">' +
+    h.map((x,i)=>{
+      const t = x.videos.reduce(
+        (s,v)=>s+(Number(v.play)||0),
+        0
+      );
+
+      return `
+        <div class="history-item">
+          <div>
+            <span class="small-label">抓取时间</span>
+            ${new Date(x.time).toLocaleString("zh-CN")}
+          </div>
+
+          <div>
+            <span class="small-label">总播放</span>
+            ${fmt(t)}
+          </div>
+
+          <div>
+            <span class="small-label">视频数</span>
+            ${x.videos.length}
+          </div>
+
+          <div>
+            <span class="small-label">记录</span>
+            第 ${h.length-i} 次
+          </div>
+        </div>
+      `;
+    }).join("") +
+    "</div>";
+}
+
+async function start(){
+  const uid = parseUid(
+    input.value
+  );
+
+  if (!uid){
+    status(
+      "无法识别 UID，请输入数字 UID 或正确的 B站空间链接。",
+      "err"
+    );
+
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "正在抓取…";
+
+  status(
+    "正在通过 Vercel API 请求 B站公开投稿数据…",
+    "loading"
+  );
+
+  try{
+    const apiData = await loadData(uid);
+
+    const videos = (apiData.videos || [])
+      .map(v => ({
+        bvid:String(v.bvid || ""),
+        title:String(v.title || "未命名视频"),
+        play:Number(v.play) || 0,
+        created:Number(v.created) || 0
+      }))
+      .filter(v => v.bvid);
+
+    if (!videos.length){
+      throw new Error(
+        "接口返回成功，但没有读取到公开视频。"
+      );
+    }
+
+    const history =
+      getHistory(uid);
+
+    const previous =
+      history.length
+        ? history[history.length-1]
+        : null;
+
+    const current = {
+      uid,
+      time:new Date().toISOString(),
+      videos
+    };
+
+    saveHistory(
+      uid,
+      current
+    );
+
+    render(
+      uid,
+      apiData,
+      current,
+      previous
+    );
+
+    status(
+      `抓取完成：共读取 <strong>${videos.length}</strong> 条投稿，数据已保存到当前浏览器。`,
+      "ok"
+    );
+
+  }catch(e){
+    console.error(e);
+
+    status(
+      `<strong>抓取失败：</strong>${escapeHtml(e.message)}<br>如果提示 B站风控/限流，通常稍后再试即可；不要连续高频刷新。`,
+      "err"
+    );
+
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "开始抓取";
+  }
+}
+
+btn.addEventListener(
+  "click",
+  start
+);
+
+input.addEventListener(
+  "keydown",
+  e => {
+    if (e.key === "Enter"){
+      start();
+    }
+  }
+);
+
+input.addEventListener(
+  "input",
+  () =>
+    localStorage.setItem(
+      LAST_INPUT,
+      input.value
+    )
+);
+
+input.value =
+  localStorage.getItem(
+    LAST_INPUT
+  ) || "";
+
+$("clearBtn").addEventListener(
+  "click",
+  () => {
+    const uid = parseUid(
+      input.value
+    );
+
+    if (!uid){
+      return status(
+        "请先输入要清除历史的 UID。",
+        "err"
+      );
+    }
+
+    if (!confirm(
+      "确定清除该 UID 在当前浏览器中的所有历史记录吗？"
+    )){
+      return;
+    }
+
+    localStorage.removeItem(
+      storageKey(uid)
+    );
+
+    $("historyBox").innerHTML =
+      '<div class="empty">暂无历史记录</div>';
+
+    trendChart?.clear();
+
+    status(
+      "本地历史记录已清除。",
+      "ok"
+    );
+  }
+);
+
+window.addEventListener(
+  "resize",
+  () => {
+    playChart?.resize();
+    incChart?.resize();
+    trendChart?.resize();
+  }
+);
+</script>
+</body>
+</html>
